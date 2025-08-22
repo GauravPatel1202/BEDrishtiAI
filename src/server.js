@@ -2,8 +2,8 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import session from "express-session";
-import queryRoutes from "./routes/queryRoutes.js"; // note: add `.js` extension in ESM
-import authRoutes from "./routes/authRoutes.js"; // note: add `.js` extension in ESM
+import queryRoutes from "./routes/queryRoutes.js"; 
+import authRoutes from "./routes/authRoutes.js"; 
 import passport from "./config/passport.js";
 
 // Load environment variables

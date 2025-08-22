@@ -23,10 +23,10 @@ export async function createQuery(req, res) {
     const promises = providers.map(async (p) => {
       const start = Date.now();
       try {
-        console.log(`=== Calling provider: ${p} ===`);
+    
         const content = await generate(p, prompt);
         const latencyMs = Date.now() - start;
-        console.log(`=== Provider ${p} completed in ${latencyMs}ms ===`);
+    
         
         return prisma.response.create({
           data: { queryId: query.id, provider: p, content, latencyMs },
