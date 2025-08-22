@@ -5,12 +5,20 @@ import { generate } from '../services/aiService.js';
 const prisma = new PrismaClient();
 
 export async function createQuery(req, res) {
-
-  
   try {
     const { prompt, providers } = req.body;
+    const userId = req.user?.id; // Get user ID from authenticated user
 
-    const query = await prisma.query.create({ data: { prompt } });
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const query = await prisma.query.create({ 
+      data: { 
+        prompt,
+        userId
+      } 
+    });
 
     const promises = providers.map(async (p) => {
       const start = Date.now();
@@ -51,9 +59,16 @@ export async function createQuery(req, res) {
   }
 }
 
-export async function getQueries(_req, res) {
+export async function getQueries(req, res) {
   try {
+    const userId = req.user?.id; // Get user ID from authenticated user
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
     const data = await prisma.query.findMany({
+      where: { userId },
       orderBy: { createdAt: 'desc' },
       include: { responses: true },
     });

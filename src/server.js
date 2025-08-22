@@ -1,10 +1,24 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import session from "express-session";
 import queryRoutes from "./routes/queryRoutes.js"; // note: add `.js` extension in ESM
+import authRoutes from "./routes/authRoutes.js"; // note: add `.js` extension in ESM
+import passport from "./config/passport.js";
 
 // Load environment variables
 dotenv.config();
+
+// Validate required environment variables
+if (!process.env.JWT_SECRET) {
+  console.warn('JWT_SECRET environment variable is not set. Using fallback secret for development.');
+  process.env.JWT_SECRET = 'fallback-secret-for-development-only';
+}
+
+if (!process.env.SESSION_SECRET) {
+  console.warn('SESSION_SECRET environment variable is not set. Using fallback secret for development.');
+  process.env.SESSION_SECRET = 'fallback-session-secret-for-development-only';
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,19 +31,33 @@ app.use(
   })
 );
 
+// Session middleware
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
+
+// Initialize Passport
+app.use(passport.initialize());
+app.use(passport.session());
+
 // Middleware
-app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Request logging middleware
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-  console.log('Headers:', req.headers);
   next();
 });
 
 // Routes
+app.use("/api/auth", authRoutes);
 app.use("/api/queries", queryRoutes);
 
 // Health check endpoint
@@ -55,4 +83,3 @@ app.use("*", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
-
