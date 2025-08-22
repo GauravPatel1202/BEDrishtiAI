@@ -7,16 +7,16 @@ const prisma = new PrismaClient();
 export async function createQuery(req, res) {
   try {
     const { prompt, providers } = req.body;
-    const userId = req.user?.id; // Get user ID from authenticated user
+    // const userId = req.user?.id; // Get user ID from authenticated user
 
-    if (!userId) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
+    // if (!userId) {
+    //   return res.status(401).json({ error: 'Authentication required' });
+    // }
 
     const query = await prisma.query.create({ 
       data: { 
         prompt,
-        userId
+        // userId
       } 
     });
 
