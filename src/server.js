@@ -25,7 +25,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(
   cors({
-    origin: "http://localhost:5173", // your frontend URL
+    origin: "*", // your frontend URL
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true, // if you plan to use cookies/auth
   })
