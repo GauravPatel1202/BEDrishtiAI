@@ -17,17 +17,17 @@ model User {
   googleId  String?  @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  // queries   Query[]
+  Query Query[]
 }
 
 model Query {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   prompt    String
-  // userId    String   @db.ObjectId
+   userId    String   @db.ObjectId
   createdAt DateTime @default(now())
   responses Response[]
 
-  // user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 }
 
 model Response {

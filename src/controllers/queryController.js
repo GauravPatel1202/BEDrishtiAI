@@ -6,13 +6,17 @@ const prisma = new PrismaClient();
 export async function createQuery(req, res) {
   try {
     const { prompt, providers } = req.body;
+    const userId = req.user.id;
 
     if (!prompt || !Array.isArray(providers)) {
       return res.status(400).json({ error: "Prompt and providers required" });
     }
 
     const query = await prisma.query.create({
-      data: { prompt },
+      data: { 
+        prompt,
+        userId: userId
+      },
     });
 
     const promises = providers.map(async (p) => {
@@ -54,13 +58,14 @@ export async function createQuery(req, res) {
 
 export async function getQueries(req, res) {
   try {
-    // Uncomment when you add auth
-    // const userId = req.user?.id;
-    // if (!userId) {
-    //   return res.status(401).json({ error: "Authentication required" });
-    // }
+    const userId = req.user.id;
+    
+    if (!userId) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
 
     const data = await prisma.query.findMany({
+      where: { userId: userId },
       orderBy: { createdAt: "desc" },
       include: { responses: true },
     });
