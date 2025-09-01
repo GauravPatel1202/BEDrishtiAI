@@ -37,5 +37,6 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
 // Protected routes
 router.get('/profile', authenticateToken, authCtrl.getProfile);
 router.put('/profile', authenticateToken, authCtrl.updateProfile);
+router.post('/logout', authenticateToken, authCtrl.logout);
 
 export default router;

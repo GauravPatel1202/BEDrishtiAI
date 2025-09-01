@@ -29,72 +29,71 @@ passport.deserializeUser(async (id, done) => {
   }
 });
 
-// Google OAuth Strategy - Only set up if credentials are provided
+
+// Google OAuth Strategy
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-  passport.use(new GoogleStrategy({
-    clientID: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: process.env.GOOGLE_CALLBACK_URL 
-  }, async (accessToken, refreshToken, profile, done) => {
-  try {
-    // Check if user already exists with this Google ID
-    let user = await prisma.user.findUnique({
-      where: { googleId: profile.id }
-    });
-
-    if (user) {
-      return done(null, user);
-    }
-
-    // Check if user exists with this email but different provider
-    user = await prisma.user.findUnique({
-      where: { email: profile.emails[0].value }
-    });
-
-    if (user) {
-      // Update existing user with Google ID
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          googleId: profile.id,
-          provider: 'google'
-        }
-      });
-      return done(null, user);
-    }
-
-    // Create new user with Google OAuth
-    user = await prisma.user.create({
-      data: {
-        email: profile.emails[0].value,
-        name: profile.displayName,
-        googleId: profile.id,
-        provider: 'google',
-        password: null // No password for OAuth users
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: process.env.GOOGLE_CALLBACK_URL,
       },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        provider: true,
-        createdAt: true
-      }
-    });
+      async (accessToken, refreshToken, profile, done) => {
+        try {
+          const email = profile.emails?.[0]?.value;
+          
+          // Check if googleId already exists (manual unique constraint check)
+          const existingUserWithGoogleId = await prisma.user.findFirst({ 
+            where: { googleId: profile.id } 
+          });
 
-    return done(null, user);
-  } catch (error) {
-    console.error('Google OAuth error:', error);
-    return done(error, null);
-  }
-  }));
+          if (existingUserWithGoogleId) {
+            return done(new Error('Google account already linked to another user'), null);
+          }
+
+          let user = await prisma.user.findUnique({ where: { googleId: profile.id } });
+
+          if (!user && email) {
+            // Check if an email account already exists
+            user = await prisma.user.findUnique({ where: { email } });
+
+            if (user) {
+              // Link Google ID to existing email account
+              user = await prisma.user.update({
+                where: { id: user.id },
+                data: { googleId: profile.id, provider: 'google' },
+              });
+            } else {
+              // Create a new user with Google
+              user = await prisma.user.create({
+                data: {
+                  googleId: profile.id,
+                  email,
+                  name: profile.displayName,
+                  provider: 'google',
+                  password: null, // no password for OAuth
+                },
+              });
+            }
+          }
+
+          return done(null, user);
+        } catch (error) {
+          console.error('Google OAuth error:', error);
+          return done(error, null);
+        }
+      }
+    )
+  );
 } else {
-  console.warn('Google OAuth is not configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables.');
+  console.warn('⚠️ Google OAuth not configured: missing GOOGLE_CLIENT_ID/SECRET.');
 }
 
 // Generate JWT token for OAuth users
 export const generateOAuthToken = (user) => {
   return jwt.sign(
-    { userId: user.id, email: user.email },
+    { userId: user.id, email: user.email, provider: user.provider },
     process.env.JWT_SECRET || 'fallback-secret',
     { expiresIn: '7d' }
   );
