@@ -5,7 +5,6 @@ import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-// ------------------- REGISTER (email + password) -------------------
 export const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -22,8 +21,8 @@ export const register = async (req, res) => {
         name,
         email,
         password: hashedPassword,
-        provider: "email", // 👈 important
-        googleId: null, // explicitly set to null to avoid unique constraint error
+        provider: "email", 
+        googleId: null, 
       },
     });
 
@@ -36,7 +35,7 @@ export const register = async (req, res) => {
   }
 };
 
-// ------------------- LOGIN (email + password) -------------------
+
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -60,12 +59,12 @@ export const login = async (req, res) => {
   }
 };
 
-// ------------------- GOOGLE LOGIN -------------------
+
 export const googleLogin = async (req, res) => {
   try {
     const { googleId, email, name } = req.body;
 
-    // Check if googleId already exists (manual unique constraint check)
+   
     const existingUserWithGoogleId = await prisma.user.findFirst({ 
       where: { googleId } 
     });
@@ -90,7 +89,7 @@ export const googleLogin = async (req, res) => {
           email,
           googleId,
           provider: "google",
-          password: null, // explicitly set to null for Google users
+          password: null, 
         },
       });
     }
@@ -104,21 +103,20 @@ export const googleLogin = async (req, res) => {
   }
 };
 
-// ------------------- GOOGLE OAUTH CALLBACK -------------------
+
 export const googleOAuthCallback = async (req, res) => {
   try {
-    // This function is called after successful Google OAuth authentication
-    // The user should be available in req.user at this point
+
     const user = req.user;
     
     if (!user) {
       return res.redirect('/api/auth/google/failure');
     }
 
-    // Generate JWT token for the user
+ 
     const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: "7d" });
 
-    // Redirect to frontend with token (adjust the URL as needed)
+    
     res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/success?token=${token}`);
   } catch (error) {
     console.error("Google OAuth callback error:", error);
@@ -126,7 +124,7 @@ export const googleOAuthCallback = async (req, res) => {
   }
 };
 
-// ------------------- GOOGLE OAUTH FAILURE -------------------
+
 export const googleOAuthFailure = (req, res) => {
   res.status(401).json({
     error: 'Google OAuth authentication failed',
@@ -134,7 +132,7 @@ export const googleOAuthFailure = (req, res) => {
   });
 };
 
-// ------------------- GET USER PROFILE -------------------
+
 export const getProfile = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -162,7 +160,7 @@ export const getProfile = async (req, res) => {
   }
 };
 
-// ------------------- UPDATE USER PROFILE -------------------
+
 export const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -188,15 +186,10 @@ export const updateProfile = async (req, res) => {
   }
 };
 
-// ------------------- LOGOUT USER -------------------
+
 export const logout = async (req, res) => {
   try {
-    // For JWT-based authentication, logout is primarily handled on the client side
-    // by removing the token from storage. This endpoint provides a clean API response.
-
-    // If you implement token blacklisting in the future, you could add logic here
-    // to invalidate the token on the server side.
-
+  
     res.json({
       message: "Logged out successfully",
       success: true

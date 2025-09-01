@@ -8,7 +8,7 @@ export async function callKimi(prompt) {
   const res = await axios.post(
     "https://openrouter.ai/api/v1/chat/completions",
     {
-      model: "moonshotai/kimi-k2:free", // 👈 use the actual Kimi model on OpenRouter
+      model: "moonshotai/kimi-k2:free", 
       messages: [{ role: "user", content: prompt }],
     },
     {
