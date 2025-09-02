@@ -6,7 +6,7 @@ import queryRoutes from "./routes/queryRoutes.js";
 import authRoutes from "./routes/authRoutes.js"; 
 import passport from "./config/passport.js";
 
-// Load environment variables
+
 dotenv.config();
 
 // Validate required environment variables
