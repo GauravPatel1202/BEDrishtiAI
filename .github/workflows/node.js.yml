@@ -45,5 +45,6 @@ jobs:
             cd /home/${{ secrets.AWS_USER }}/BEDrishtiAI
             git pull origin main
             npm install
+            npx prisma generate
             pm2 start npm --name "BEDrishtiAI" -- start || pm2 restart BEDrishtiAI
             pm2 save
