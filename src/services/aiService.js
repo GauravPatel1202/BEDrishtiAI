@@ -1,11 +1,11 @@
 import { callOpenAI } from "./provider/openai.js";
-import { callGemini } from "./provider/gemini.js";
 import { callDeepSeek } from "./provider/deepseek.js";
-import { callKimi,  } from "./provider/mistral.js";
+import { callKimi } from "./provider/mistral.js";
+import { askGemini } from "./provider/geminiUpdate.js";
 
 const providers = {
   openai: callOpenAI,
-  gemini: callGemini,
+  gemini: askGemini,
   deepseek: callDeepSeek,
   kimi: callKimi,
 };
@@ -13,10 +13,9 @@ const providers = {
 export async function generate(provider, prompt) {
   const cleanProvider = provider.trim().toLowerCase();
   const fn = providers[cleanProvider];
-
   if (!fn) {
     throw new Error(`Provider ${cleanProvider} not configured`);
   }
 
-  return fn(prompt);
+  return fn("session123", prompt);
 }
