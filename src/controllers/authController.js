@@ -21,7 +21,7 @@ export const register = async (req, res) => {
         name,
         email,
         password: hashedPassword,
-        provider: "email", 
+        provider: "email",
         googleId: null, 
       },
     });
@@ -136,7 +136,7 @@ export const googleOAuthFailure = (req, res) => {
 export const getProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
