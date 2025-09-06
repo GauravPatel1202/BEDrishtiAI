@@ -1,7 +1,5 @@
-import { PrismaClient } from "@prisma/client";
 import { generate } from "../services/aiService.js";
-
-const prisma = new PrismaClient();
+import prisma from "../config/prismaClient.js";
 
 export async function createQuery(req, res) {
   try {

@@ -2,34 +2,57 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import session from "express-session";
+import helmet from "helmet";
+import compression from "compression";
+import rateLimit from "express-rate-limit";
 import queryRoutes from "./routes/queryRoutes.js"; 
 import authRoutes from "./routes/authRoutes.js"; 
 import passport from "./config/passport.js";
-
 
 dotenv.config();
 
 // Validate required environment variables
 if (!process.env.JWT_SECRET) {
-  console.warn('JWT_SECRET environment variable is not set. Using fallback secret for development.');
-  process.env.JWT_SECRET = 'fallback-secret-for-development-only';
+  console.error('JWT_SECRET environment variable is not set. Exiting.');
+  process.exit(1);
 }
 
 if (!process.env.SESSION_SECRET) {
-  console.warn('SESSION_SECRET environment variable is not set. Using fallback secret for development.');
-  process.env.SESSION_SECRET = 'fallback-session-secret-for-development-only';
+  console.error('SESSION_SECRET environment variable is not set. Exiting.');
+  process.exit(1);
 }
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(
-  cors({
-    origin: "*", // your frontend URL
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true, // if you plan to use cookies/auth
-  })
-);
+// Security middleware
+app.use(helmet());
+
+// Compression middleware
+app.use(compression());
+
+// Rate limiting middleware
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(limiter);
+
+// CORS configuration - restrict origins in production
+const allowedOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(",") : [];
+app.use(cors({
+  origin: function(origin, callback) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true,
+}));
 
 // Session middleware
 app.use(session({
@@ -68,9 +91,12 @@ app.get("/", (req, res) => {
 // Global error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
+  if (err.message === "Not allowed by CORS") {
+    return res.status(403).json({ error: "CORS error: Not allowed" });
+  }
   res.status(500).json({
     error: "Something went wrong!",
-    message: err.message,
+    message: process.env.NODE_ENV === 'production' ? "Internal Server Error" : err.message,
   });
 });
 
@@ -78,6 +104,15 @@ app.use((err, req, res, next) => {
 app.use("*", (req, res) => {
   res.status(404).json({ error: "Route not found" });
 });
+
+// Graceful shutdown
+const shutdown = () => {
+  console.log("Shutting down server...");
+  process.exit(0);
+};
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
 
 // Start server
 app.listen(PORT, () => {

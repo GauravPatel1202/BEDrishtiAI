@@ -1,122 +1,151 @@
 // src/controllers/authController.js
-import prisma from "../config/ prismaClient.js";
+import prisma from "../config/prismaClient.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { body, validationResult } from "express-validator";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-export const register = async (req, res) => {
-  try {
-    const { name, email, password } = req.body;
-
-    const existingUser = await prisma.user.findUnique({ where: { email } });
-    if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
+export const register = [
+  // Validation middleware
+  body("name").isLength({ min: 1 }).withMessage("Name is required"),
+  body("email").isEmail().withMessage("Valid email is required"),
+  body("password").isLength({ min: 6 }).withMessage("Password must be at least 6 characters"),
+  async (req, res) => {
+    // Validate inputs
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    try {
+      const { name, email, password } = req.body;
 
-    const newUser = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-        provider: "email",
-        googleId: null, 
-      },
-    });
+      const existingUser = await prisma.user.findUnique({ where: { email } });
+      if (existingUser) {
+        return res.status(400).json({ message: "User already exists" });
+      }
 
-    const token = jwt.sign({ id: newUser.id }, JWT_SECRET, { expiresIn: "7d" });
+      const hashedPassword = await bcrypt.hash(password, 10);
 
-    res.status(201).json({ user: newUser, token });
-  } catch (error) {
-    console.error("Registration error:", error);
-    res.status(500).json({ message: "Registration failed" });
-  }
-};
-
-
-export const login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user || !user.password) {
-      return res.status(400).json({ message: "Invalid credentials" });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
-    }
-
-    const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: "7d" });
-
-    res.json({ user, token });
-  } catch (error) {
-    console.error("Login error:", error);
-    res.status(500).json({ message: "Login failed" });
-  }
-};
-
-
-export const googleLogin = async (req, res) => {
-  try {
-    const { googleId, email, name } = req.body;
-
-   
-    const existingUserWithGoogleId = await prisma.user.findFirst({ 
-      where: { googleId } 
-    });
-
-    if (existingUserWithGoogleId) {
-      return res.status(400).json({ message: "Google account already linked to another user" });
-    }
-
-    let user = await prisma.user.findUnique({ where: { email } });
-
-    if (user) {
-      // If user exists with email, link googleId
-      user = await prisma.user.update({
-        where: { email },
-        data: { googleId, provider: "google" },
-      });
-    } else {
-      // Otherwise create new Google user
-      user = await prisma.user.create({
+      const newUser = await prisma.user.create({
         data: {
           name,
           email,
-          googleId,
-          provider: "google",
-          password: null, 
+          password: hashedPassword,
+          provider: "email",
+          googleId: null,
         },
       });
+
+      const token = jwt.sign({ id: newUser.id }, JWT_SECRET, { expiresIn: "7d" });
+
+      res.status(201).json({ user: newUser, token });
+    } catch (error) {
+      console.error("Registration error:", error);
+      res.status(500).json({ message: "Registration failed" });
+    }
+  },
+];
+
+export const login = [
+  // Validation middleware
+  body("email").isEmail().withMessage("Valid email is required"),
+  body("password").exists().withMessage("Password is required"),
+  async (req, res) => {
+    // Validate inputs
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
 
-    const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: "7d" });
+    try {
+      const { email, password } = req.body;
 
-    res.json({ user, token });
-  } catch (error) {
-    console.error("Google login error:", error);
-    res.status(500).json({ message: "Google login failed" });
-  }
-};
+      const user = await prisma.user.findUnique({ where: { email } });
+      if (!user || !user.password) {
+        return res.status(400).json({ message: "Invalid credentials" });
+      }
 
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        return res.status(400).json({ message: "Invalid credentials" });
+      }
+
+      const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: "7d" });
+
+      res.json({ user, token });
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ message: "Login failed" });
+    }
+  },
+];
+
+export const googleLogin = [
+  // Validation middleware
+  body("googleId").isString().withMessage("Google ID is required"),
+  body("email").isEmail().withMessage("Valid email is required"),
+  body("name").isLength({ min: 1 }).withMessage("Name is required"),
+  async (req, res) => {
+    // Validate inputs
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+      const { googleId, email, name } = req.body;
+
+      const existingUserWithGoogleId = await prisma.user.findFirst({
+        where: { googleId },
+      });
+
+      if (existingUserWithGoogleId) {
+        return res.status(400).json({ message: "Google account already linked to another user" });
+      }
+
+      let user = await prisma.user.findUnique({ where: { email } });
+
+      if (user) {
+        // If user exists with email, link googleId
+        user = await prisma.user.update({
+          where: { email },
+          data: { googleId, provider: "google" },
+        });
+      } else {
+        // Otherwise create new Google user
+        user = await prisma.user.create({
+          data: {
+            name,
+            email,
+            googleId,
+            provider: "google",
+            password: null,
+          },
+        });
+      }
+
+      const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: "7d" });
+
+      res.json({ user, token });
+    } catch (error) {
+      console.error("Google login error:", error);
+      res.status(500).json({ message: "Google login failed" });
+    }
+  },
+];
 
 export const googleOAuthCallback = async (req, res) => {
   try {
-
     const user = req.user;
-    
+
     if (!user) {
       return res.redirect('/api/auth/google/failure');
     }
 
- 
     const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: "7d" });
 
-    
     res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/success?token=${token}`);
   } catch (error) {
     console.error("Google OAuth callback error:", error);
@@ -124,14 +153,12 @@ export const googleOAuthCallback = async (req, res) => {
   }
 };
 
-
 export const googleOAuthFailure = (req, res) => {
   res.status(401).json({
     error: 'Google OAuth authentication failed',
     message: 'Unable to authenticate with Google'
   });
 };
-
 
 export const getProfile = async (req, res) => {
   try {
@@ -160,7 +187,6 @@ export const getProfile = async (req, res) => {
   }
 };
 
-
 export const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -186,10 +212,8 @@ export const updateProfile = async (req, res) => {
   }
 };
 
-
 export const logout = async (req, res) => {
   try {
-  
     res.json({
       message: "Logged out successfully",
       success: true
